@@ -1,0 +1,135 @@
+<?php
+// Koneksi ke database menggunakan PDO
+// $host = 'localhost';
+// $dbname = 'database_name';
+// $username = 'username';
+// $password = 'password';
+
+// try {
+//     $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
+//     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+// } catch (PDOException $e) {
+//     echo 'Connection failed: ' . $e->getMessage();
+// }
+
+include '../inc/koneksi.php';
+
+// Menangani permintaan dari DataTables
+$start = isset($_GET['start']) ? $_GET['start'] : 0;
+$length = isset($_GET['length']) ? $_GET['length'] : 10;
+$search_value = isset($_GET['search']['value']) ? $_GET['search']['value'] : ''; // Pencarian umum
+$date_start = isset($_GET['date_start']) ? $_GET['date_start'] : ''; // Tanggal mulai
+$date_end = isset($_GET['date_end']) ? $_GET['date_end'] : ''; // Tanggal akhir
+
+// Query SQL untuk DataTable dengan filter tanggal
+//$query = "SELECT * FROM your_table_name WHERE 1";
+
+// $query = "SELECT A.kd_obat,ROUND (LENGTH(A.kd_obat)) AS kt,A.nm_obat,A.sat_obat,A.sat_jual,A.hrg_obat,A.nobatch,A.hrgbeli_obat,A.hrg_obat,
+// A.idrak,A.margin,
+// -- ,(B.Awal) as StokAwal, 
+// Coalesce(B.Jml_fisik,0) as jml_fisik,
+// Coalesce(H.jml_titipan,0) as jml_titip,
+// Coalesce(C.tambah,0) as jml_tambah,
+// Coalesce(D.Keluar,0) as jml_keluar,
+// Coalesce(E.Returbeli,0) as jml_rbl,
+// Coalesce(F.Returjual,0) as jml_rjual,
+// Coalesce(G.Returkonsi,0) as jml_rkonsi,
+// -- Stok
+// (COALESCE(B.jml_fisik,0)+Coalesce(C.tambah,0)+Coalesce(H.jml_titipan,0)) -
+// (Coalesce(D.keluar,0) + Coalesce(E.Returbeli,0)+Coalesce(F.Returjual,0)+Coalesce(G.Returkonsi,0)) as Stok
+// FROM tbl_dataobat A
+// /* Opname */
+// LEFT JOIN	 
+// -- JUMLAH = jml_opname
+// (SELECT kode_brg, Sum(jml_opname) as Jml_fisik FROM detail_opname 
+//   WHERE tgl_opname ='$tgl' 
+// GROUP	BY	kode_brg) B
+// ON A.kd_obat=B.kode_brg
+// /* Pembelian */
+// LEFT JOIN	 
+// (SELECT kode_brg, Sum(jumlah) as Tambah FROM detail_pembelian 
+//  WHERE tgl_faktur BETWEEN '$tgl' AND NOW() 
+// GROUP BY	 kode_brg) C
+// ON A.kd_obat=C.kode_brg
+
+// LEFT JOIN	
+// (SELECT	kode_brg, Sum(jml_jual) as Keluar FROM detail_penjualan 
+//  WHERE tgl_jual BETWEEN '$tgl' AND NOW() 
+// GROUP BY	kode_brg) D
+// ON A.kd_obat=D.kode_brg
+
+// LEFT JOIN	
+// (SELECT	kode_brg, Sum(retur) as Returbeli FROM detail_returbeli
+// WHERE tgl_returbeli BETWEEN '$tgl' AND NOW() 
+// GROUP BY kode_brg) E
+// ON A.kd_obat=E.kode_brg
+
+// LEFT JOIN	
+// (SELECT	kode_brg, Sum(retur_jual) as Returjual FROM detail_returjual
+// WHERE tgl_returjual BETWEEN '$tgl' AND NOW()
+// GROUP BY kode_brg) F
+// ON A.kd_obat=F.kode_brg
+
+// LEFT JOIN	
+// (SELECT	kode_brg, Sum(retur_konsi) as Returkonsi FROM detail_returkonsinasi 
+// WHERE tgl_returkonsi BETWEEN '$tgl' AND NOW()
+// GROUP BY kode_brg) G
+// ON A.kd_obat=G.kode_brg
+
+// LEFT JOIN	
+// (SELECT	kode_brg, Sum(jumlah) as jml_titipan FROM detail_konsinasi 
+// WHERE tgl_konsinasi BETWEEN '$tgl' AND NOW()
+// GROUP BY kode_brg) H
+// ON A.kd_obat=H.kode_brg
+
+// -- WHERE A.nm_obat like concat('%',cari,'%') 
+// ORDER BY A.nm_obat WHERE 1";
+
+
+
+
+// Jika ada filter tanggal
+if ($date_start && $date_end) {
+    $query .= " AND tanggal BETWEEN :date_start AND :date_end";
+}
+
+// Jika ada pencarian umum
+if ($search_value) {
+    $query .= " AND (column_name LIKE :search_value)";
+}
+
+$query .= " LIMIT :start, :length";
+
+// Menyiapkan statement
+$stmt = $pdo->prepare($query);
+
+// Menambahkan parameter
+if ($date_start && $date_end) {
+    $stmt->bindParam(':date_start', $date_start);
+    $stmt->bindParam(':date_end', $date_end);
+}
+if ($search_value) {
+    $stmt->bindValue(':search_value', "%$search_value%", PDO::PARAM_STR);
+}
+$stmt->bindParam(':start', $start, PDO::PARAM_INT);
+$stmt->bindParam(':length', $length, PDO::PARAM_INT);
+
+// Eksekusi query
+$stmt->execute();
+
+// Ambil hasil data
+$data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Hitung total data (untuk paginasi)
+$stmt = $pdo->query("SELECT COUNT(*) FROM your_table_name");
+$total_data = $stmt->fetchColumn();
+
+// Return data dalam format JSON untuk DataTable
+$response = [
+    'draw' => isset($_GET['draw']) ? $_GET['draw'] : 1,
+    'recordsTotal' => $total_data,
+    'recordsFiltered' => $total_data, // Sesuaikan jika ingin filter data
+    'data' => $data
+];
+
+echo json_encode($response);

@@ -1,0 +1,31 @@
+How to Fix It
+Check the Existing Users in MySQL: You can confirm if root@% exists by logging into MySQL and running:
+
+sql
+Salin kode
+SELECT user, host FROM mysql.user;
+Look for root with % as the host. If it’s not there, you’ll need to add it.
+
+Create or Grant Permissions to root@%: If root@% does not exist, create it with the required privileges:
+
+sql
+Salin kode
+CREATE USER 'root'@'%' IDENTIFIED BY 'your_password';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+Replace your_password with a secure password for the root user.
+
+Modify the Definer in the SQL Code: If root@% is unnecessary, you can change the definer in stored procedures, triggers, or events to another valid user, such as root@localhost. Use a query like this:
+
+sql
+Salin kode
+ALTER DEFINER = 'root'@'localhost' PROCEDURE procedure_name;
+
+
+
+CREATE TABLE data_users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100),
+    email VARCHAR(100),
+    status ENUM('active', 'inactive', 'pending') NOT NULL
+);
